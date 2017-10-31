@@ -53,6 +53,16 @@ public class MorseDecoder {
 
         double[] sampleBuffer = new double[BIN_SIZE * inputFile.getNumChannels()];
         for (int binIndex = 0; binIndex < totalBinCount; binIndex++) {
+            double sum = 0;
+            // System.out.println(inputFile.getNumChannels());
+            inputFile.readFrames(sampleBuffer, BIN_SIZE);
+            //System.out.println(inputFile.getFramesRemaining());
+            for (double i: sampleBuffer) {
+                sum += Math.abs(sampleBuffer[(int) i]);
+                //System.out.println(sampleBuffer[(int) i]);
+            }
+            returnBuffer[binIndex] = sum;
+            //System.out.println(returnBuffer[binIndex]);
             // Get the right number of samples from the inputFile
             // Sum all the samples together and store them in the returnBuffer
         }
@@ -60,10 +70,10 @@ public class MorseDecoder {
     }
 
     /** Power threshold for power or no power. You may need to modify this value. */
-    private static final double POWER_THRESHOLD = 10;
+    private static final double POWER_THRESHOLD = .4;
 
     /** Bin threshold for dots or dashes. Related to BIN_SIZE. You may need to modify this value. */
-    private static final int DASH_BIN_COUNT = 8;
+    private static final int DASH_BIN_COUNT = 11;
 
     /**
      * Convert power measurements to dots, dashes, and spaces.
@@ -77,6 +87,47 @@ public class MorseDecoder {
      * @return the Morse code string of dots, dashes, and spaces
      */
     private static String powerToDotDash(final double[] powerMeasurements) {
+        String returnString = "";
+        boolean wasPower = false;
+        boolean isPower;
+        boolean wasSilence = false;
+        boolean isSilence;
+        int powerDuration = 0;
+        int silenceDuration = 0;
+
+        for (int powerIndex = 0; powerIndex < powerMeasurements.length; powerIndex++) {
+            isPower = (powerMeasurements[powerIndex] >= POWER_THRESHOLD);
+            //System.out.println(isPower);
+            isSilence = (powerMeasurements[powerIndex] < POWER_THRESHOLD);
+            if (powerIndex > 0) {
+                wasPower = (powerMeasurements[powerIndex] >= POWER_THRESHOLD);
+                //System.out.println("waspower" + wasPower);
+                wasSilence = ((powerMeasurements[powerIndex]) < POWER_THRESHOLD);
+                //System.out.println("wassilence" + wasSilence);
+            }
+            if (isPower && wasPower) {
+                powerDuration += 1;
+                //System.out.println(1);
+            } else if (isPower && wasSilence) {
+                powerDuration += 1;
+            } else if (isSilence && wasSilence) {
+                silenceDuration += 1;
+                if (silenceDuration > POWER_THRESHOLD) {
+                    returnString += " ";
+                    System.out.print(" ");
+                }
+            } else if (isSilence && wasPower) {
+                silenceDuration += 1;
+                if (powerDuration > POWER_THRESHOLD) {
+                    returnString += "-";
+                    System.out.print("-");
+                } else {
+                    returnString += ".";
+                    System.out.print(".");
+                }
+            }
+        }
+
         /*
          * There are four conditions to handle. Symbols should only be output when you see
          * transitions. You will also have to store how much power or silence you have seen.
@@ -86,8 +137,8 @@ public class MorseDecoder {
         // else if ispower and not waspower
         // else if issilence and wassilence
         // else if issilence and not wassilence
-
-        return "";
+        System.out.println(returnString);
+        return returnString;
     }
 
     /**
